@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hf-ai-editorial-agent"
+version = "0.6.0"
+description = "A Hugging Face powered editorial agent for Beyke Workflows with model-assisted topic selection, research synthesis, review, human-gated WordPress drafts, per-stage model routing, and SEO-ready article package generation."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Beyke Workflows" }]
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "feedparser>=6.0.11",
+    "huggingface_hub>=0.31.0",
+    "Pillow>=10.0.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.7.0",
+    "markdown>=3.6",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0.0"]
+
+[project.scripts]
+ai-editorial-agent = "editorial_agent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["editorial_agent*"]
+exclude = ["tests*", "prompts*", "config*"]
+
+[tool.setuptools.package-data]
+editorial_agent = ["prompts/*.md", "config/*.yaml"]
