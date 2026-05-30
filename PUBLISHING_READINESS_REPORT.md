@@ -1,6 +1,6 @@
 # Publishing Readiness Report
 
-Generated for repository handoff on 2026-05-13.
+Generated for repository handoff on 2026-05-30.
 
 ## Readiness verdict
 
@@ -28,6 +28,25 @@ and would contact external services.
   `--human-approved` flag.
 - Added regression tests for packaged resources, `.webp` image discovery, media
   content types, and missing-image gate rejection.
+- Enhanced WordPress credential security with input validation and secure error handling.
+- Improved validation accuracy with case-insensitive author matching and word boundary focus keyword validation.
+- Added configurable minimum article word count (default 1500 words).
+- Enhanced placeholder validation to ignore placeholders in code blocks.
+- Added retry logic with exponential backoff for network operations.
+- Improved error handling with specific exception types instead of broad exceptions.
+- Expanded security documentation with detailed best practices.
+
+## Security enhancements
+
+The agent now includes several security improvements:
+
+- Enhanced WordPress credential handling with input validation and secure error reporting
+- Environment variable validation for all required credentials
+- Retry logic with exponential backoff for network operations
+- Improved exception handling with specific error types
+- Detailed security best practices documentation in `SECURITY.md`
+
+These enhancements make the agent more secure and robust for production use.
 - Added GitHub Actions CI for Python 3.10, 3.11, and 3.12.
 - Added `HANDOFF.md` and expanded README repository-readiness instructions.
 

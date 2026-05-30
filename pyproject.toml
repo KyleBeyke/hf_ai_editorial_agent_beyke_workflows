@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hf-ai-editorial-agent"
-version = "0.6.0"
+version = "0.7.0"
 description = "A Hugging Face powered editorial agent for Beyke Workflows with model-assisted topic selection, research synthesis, review, human-gated WordPress drafts, per-stage model routing, and SEO-ready article package generation."
 readme = "README.md"
 license = { file = "LICENSE" }

@@ -197,15 +197,27 @@ This is the model-collaboration path: models do not publish or control gates, bu
 Deterministic checks run before delivery:
 
 - required Markdown package sections;
-- `## Author` must identify Kyle Beyke;
-- focus keyword in metadata and image alt text;
-- article body length;
+- `## Author` must identify Kyle Beyke (case-insensitive with flexible whitespace handling);
+- focus keyword in metadata and image alt text (using word boundary matching to prevent false positives);
+- article body length (configurable minimum word count, default 1500 words);
 - source inventory consistency;
-- related internal links must come from the configured archive scrape/fixture;
+- related internal links must come from the configured archive scrape/fixture (standardized on current heading format);
 - claim ledger and fact/analysis boundary artifacts;
 - style review for generic AI/corporate phrases;
 - full-body duplicate-risk report;
 - image file and metadata validation.
+
+## Security enhancements
+
+The agent now includes several security improvements:
+
+- Enhanced WordPress credential handling with input validation and secure error reporting
+- Environment variable validation for all required credentials
+- Retry logic with exponential backoff for network operations
+- Improved exception handling with specific error types instead of broad exceptions
+- Detailed security best practices documentation in `SECURITY.md`
+
+See `SECURITY.md` for detailed security guidance and best practices.
 
 ## Development
 

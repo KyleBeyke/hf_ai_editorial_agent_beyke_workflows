@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from difflib import SequenceMatcher
@@ -46,16 +47,24 @@ class BodyDuplicateReport:
 def fetch_article_body(http: HttpClient, article: SiteArticle) -> str:
     """Fetch and clean one published article body, falling back to archive excerpt."""
 
-    try:
-        html = http.get_text(article.url)
-        soup = BeautifulSoup(html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer", "header", "form", "aside"]):
-            tag.decompose()
-        # WordPress themes usually use <article>, but fall back gracefully.
-        node = soup.find("article") or soup.find("main") or soup
-        return clean_text(node.get_text(" ", strip=True)) or article.excerpt
-    except Exception:
-        return article.excerpt
+    # Retry logic with exponential backoff
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            html = http.get_text(article.url)
+            soup = BeautifulSoup(html, "html.parser")
+            for tag in soup(["script", "style", "nav", "footer", "header", "form", "aside"]):
+                tag.decompose()
+            # WordPress themes usually use <article>, but fall back gracefully.
+            node = soup.find("article") or soup.find("main") or soup
+            result = clean_text(node.get_text(" ", strip=True)) or article.excerpt
+            return result
+        except Exception:
+            if attempt == max_retries - 1:  # Last attempt
+                return article.excerpt
+            else:
+                # Exponential backoff
+                time.sleep(2 ** attempt)
 
 
 def compare_body_to_existing(article_md: str, existing: list[SiteArticle], http: HttpClient | None = None, *, offline: bool = False, max_articles: int = 20) -> BodyDuplicateReport:

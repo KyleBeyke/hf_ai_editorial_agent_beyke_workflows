@@ -356,10 +356,18 @@ def fetch_source_excerpt(http: HttpClient, url: str, fallback: str = "") -> str:
     of it to inject into prompts after compression.
     """
 
-    try:
-        html = http.get_text(url)
-    except Exception:
-        return fallback
+    # Retry logic with exponential backoff
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            html = http.get_text(url)
+            break  # Success, break out of retry loop
+        except Exception:
+            if attempt == max_retries - 1:  # Last attempt
+                return fallback
+            else:
+                # Exponential backoff
+                time.sleep(2 ** attempt)
 
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header", "form", "aside"]):

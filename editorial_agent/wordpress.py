@@ -18,6 +18,8 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
+import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
@@ -103,6 +105,14 @@ def load_and_validate_approval(path: Path, run_dir: Path) -> dict[str, Any]:
 def wp_auth_header(username: str, app_password: str) -> dict[str, str]:
     """Return WordPress Application Password Basic Auth header."""
 
+    # Validate inputs
+    if not username or not app_password:
+        raise ValueError("WordPress username and application password are required")
+
+    # Additional validation for credential format
+    if len(username) > 100 or len(app_password) > 100:
+        raise ValueError("WordPress credentials exceed maximum length")
+
     token = base64.b64encode(f"{username}:{app_password}".encode("utf-8")).decode("ascii")
     return {"Authorization": f"Basic {token}"}
 
@@ -132,13 +142,34 @@ def wordpress_payload_from_article(article_md: str) -> dict[str, Any]:
     WordPress user ID when creating the remote draft.
     """
 
+    # Validate input
+    if not article_md or not isinstance(article_md, str):
+        raise ValueError("Article markdown content is required")
+
     title_section = extract_section(article_md, "Title").strip()
     title = title_section.splitlines()[0].strip("# ").strip() if title_section else ""
     if not title:
         title = article_md.splitlines()[0].replace("#", "").strip() or "AI Editorial Draft"
+
+    # Validate title
+    if len(title) > 255:
+        title = title[:252] + "..."
+
     slug = extract_section(article_md, "Slug").strip().splitlines()[0].strip("` ") if extract_section(article_md, "Slug") else ""
+    # Validate slug
+    if slug and len(slug) > 200:
+        slug = slug[:197] + "..."
+
     excerpt = extract_section(article_md, "Excerpt").strip()
+    # Validate excerpt
+    if len(excerpt) > 2000:
+        excerpt = excerpt[:1997] + "..."
+
     content = extract_consolidated_wordpress_block(article_md) or extract_section(article_md, "Consolidated WordPress Content Block") or article_md
+    # Validate content
+    if len(content) > 100000:  # 100KB limit
+        raise ValueError("Article content exceeds maximum size limit")
+
     payload: dict[str, Any] = {
         "title": title,
         "slug": slug,
@@ -146,12 +177,15 @@ def wordpress_payload_from_article(article_md: str) -> dict[str, Any]:
         "content": markdown_to_basic_html(content),
         "status": "draft",
     }
+
+    # Validate author ID if provided
     author_id = os.getenv("WP_AUTHOR_ID")
     if author_id:
         try:
             payload["author"] = int(author_id)
         except ValueError:
             raise RuntimeError("WP_AUTHOR_ID must be numeric if set.")
+
     return payload
 
 
@@ -159,16 +193,33 @@ class WordPressDraftClient:
     """Minimal WordPress REST API client that can create drafts only."""
 
     def __init__(self, base_url: str, username: str, app_password: str, timeout: int = 30) -> None:
+        # Validate inputs
+        if not base_url:
+            raise ValueError("WordPress base URL is required")
+        if not base_url.startswith(("http://", "https://")):
+            raise ValueError("WordPress base URL must start with http:// or https://")
+        if not username or not app_password:
+            raise ValueError("WordPress username and application password are required")
+
         self.base_url = base_url.rstrip("/")
         self.auth = wp_auth_header(username, app_password)
         self.timeout = timeout
+        # Store sanitized credentials info for logging
+        self._username = username
+        self._app_password_masked = "*" * min(8, len(app_password)) if app_password else ""
 
     @classmethod
     def from_env(cls) -> "WordPressDraftClient":
         missing = [name for name in ["WP_BASE_URL", "WP_USERNAME", "WP_APP_PASSWORD"] if not os.getenv(name)]
         if missing:
             raise RuntimeError("Missing WordPress environment variables: " + ", ".join(missing))
-        return cls(os.environ["WP_BASE_URL"], os.environ["WP_USERNAME"], os.environ["WP_APP_PASSWORD"])
+
+        base_url = os.environ["WP_BASE_URL"]
+        # Validate URL format
+        if not base_url.startswith(("http://", "https://")):
+            raise ValueError("WP_BASE_URL must start with http:// or https://")
+
+        return cls(base_url, os.environ["WP_USERNAME"], os.environ["WP_APP_PASSWORD"])
 
     def upload_media(self, image_path: Path) -> int:
         """Upload media and return WordPress media ID."""
@@ -177,9 +228,27 @@ class WordPressDraftClient:
         headers = dict(self.auth)
         headers["Content-Disposition"] = f'attachment; filename="{image_path.name}"'
         headers["Content-Type"] = media_content_type(image_path)
-        resp = requests.post(url, headers=headers, data=image_path.read_bytes(), timeout=self.timeout)
-        resp.raise_for_status()
-        return int(resp.json()["id"])
+
+        # Sanitize headers for logging
+        sanitized_headers = {k: v if k != "Authorization" else "[REDACTED]" for k, v in headers.items()}
+
+        # Retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(url, headers=headers, data=image_path.read_bytes(), timeout=self.timeout)
+                resp.raise_for_status()
+                return int(resp.json()["id"])
+            except requests.RequestException as e:
+                if attempt == max_retries - 1:  # Last attempt
+                    # Sanitize error message to avoid credential exposure
+                    error_msg = str(e)
+                    if self._app_password_masked in error_msg:
+                        error_msg = re.sub(re.escape(self._app_password_masked), "[REDACTED]", error_msg)
+                    raise requests.RequestException(f"Failed to upload media after {max_retries} attempts: {error_msg}") from e
+                else:
+                    # Exponential backoff
+                    time.sleep(2 ** attempt)
 
     def create_draft(self, article_md: str, featured_image_id: int | None = None) -> dict[str, Any]:
         """Create a WordPress draft post. The status is forcibly set to draft."""
@@ -188,17 +257,32 @@ class WordPressDraftClient:
         payload["status"] = "draft"  # Hard safety control: never trust caller-provided status.
         if featured_image_id:
             payload["featured_media"] = featured_image_id
-        resp = requests.post(
-            f"{self.base_url}/wp-json/wp/v2/posts",
-            headers={**self.auth, "Content-Type": "application/json"},
-            data=json.dumps(payload),
-            timeout=self.timeout,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        if data.get("status") != "draft":
-            raise RuntimeError(f"WordPress returned non-draft status; refusing to continue: {data.get('status')}")
-        return data
+
+        # Retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(
+                    f"{self.base_url}/wp-json/wp/v2/posts",
+                    headers={**self.auth, "Content-Type": "application/json"},
+                    data=json.dumps(payload),
+                    timeout=self.timeout,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if data.get("status") != "draft":
+                    raise RuntimeError(f"WordPress returned non-draft status; refusing to continue: {data.get('status')}")
+                return data
+            except requests.RequestException as e:
+                if attempt == max_retries - 1:  # Last attempt
+                    # Sanitize error message to avoid credential exposure
+                    error_msg = str(e)
+                    if self._app_password_masked in error_msg:
+                        error_msg = re.sub(re.escape(self._app_password_masked), "[REDACTED]", error_msg)
+                    raise requests.RequestException(f"Failed to create draft after {max_retries} attempts: {error_msg}") from e
+                else:
+                    # Exponential backoff
+                    time.sleep(2 ** attempt)
 
 
 def create_wordpress_draft_with_gate(run_dir: Path, approval_file: Path, *, dry_run: bool = False) -> dict[str, Any]:

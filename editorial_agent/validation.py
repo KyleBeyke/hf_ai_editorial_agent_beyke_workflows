@@ -72,44 +72,66 @@ class ValidationResult:
     focus_keyword: str | None
 
 
-def validate_article_package(markdown: str) -> ValidationResult:
+def validate_article_package(markdown: str, min_word_count: int = 1500) -> ValidationResult:
     issues: list[str] = []
 
     for section in REQUIRED_TOP_LEVEL_SECTIONS:
         if not has_heading(markdown, section, level=2):
             issues.append(f"Missing required section: {section}")
 
-    if any(token in markdown for token in ["[PASTE", "[Generate", "[Option", "TODO", "{{"]):
-        issues.append("Output appears to contain unresolved placeholders.")
+    # Check for unresolved placeholders using more precise pattern matching
+    placeholder_patterns = [
+        r'\[PASTE\s+[^]]*?\]',      # [PASTE ...] patterns
+        r'\[Generate\s+[^]]*?\]',   # [Generate ...] patterns
+        r'\[Option\s+[^]]*?\]',     # [Option ...] patterns
+        r'\bTODO\b',                # TODO not in code/comments
+        r'\{\{[^}]*?\}\}',          # {{...}} patterns
+    ]
+
+    for pattern in placeholder_patterns:
+        # Only match placeholders outside of code blocks
+        code_block_pattern = r'```.*?```|`[^`]*`'
+        # Remove code blocks for placeholder detection
+        content_without_code = re.sub(code_block_pattern, '', markdown, flags=re.DOTALL)
+        if re.search(pattern, content_without_code, re.IGNORECASE):
+            issues.append("Output appears to contain unresolved placeholders.")
+            break  # Only report once
 
     author = extract_section(markdown, "Author").strip()
-    if "Kyle Beyke" not in author:
+    # Case-insensitive check with whitespace normalization
+    normalized_author = re.sub(r'\s+', ' ', author).strip()
+    if not re.search(r'kyle\s+beyke', normalized_author, re.IGNORECASE):
         issues.append("Author section must identify Kyle Beyke.")
 
     focus_keyword = first_nonempty_line(extract_section(markdown, "Focus Keyword"))
-    meta = extract_section(markdown, "Meta Description").lower()
-    if focus_keyword and focus_keyword.lower() not in meta:
-        issues.append("Focus keyword not found in meta description.")
+    if focus_keyword:
+        # Use word boundary matching to prevent partial matches
+        escaped_keyword = re.escape(focus_keyword.strip())
+        meta = extract_section(markdown, "Meta Description")
+        if not re.search(rf'\b{escaped_keyword}\b', meta, re.IGNORECASE):
+            issues.append("Focus keyword not found in meta description.")
 
-    alt_text = extract_section(markdown, "Featured Image Alt Text").lower()
-    if focus_keyword and focus_keyword.lower() not in alt_text:
-        issues.append("Focus keyword not found in featured image alt text.")
+    if focus_keyword:
+        # Use word boundary matching for alt text as well
+        escaped_keyword = re.escape(focus_keyword.strip())
+        alt_text = extract_section(markdown, "Featured Image Alt Text")
+        if not re.search(rf'\b{escaped_keyword}\b', alt_text, re.IGNORECASE):
+            issues.append("Focus keyword not found in featured image alt text.")
 
     wordpress_block = extract_consolidated_wordpress_block(markdown)
     if wordpress_block:
         for section in REQUIRED_WORDPRESS_BLOCK_SECTIONS:
-            # Accept the legacy Kyle heading for old fixtures, but prefer the
-            # current Beyke Workflows heading.
+            # Standardize on current Beyke Workflows heading
             if section == "Related articles from Beyke Workflows":
-                if not (has_heading(wordpress_block, section) or has_heading(wordpress_block, "Related articles from Beyke Workflows")):
+                if not has_heading(wordpress_block, section):
                     issues.append(f"Missing WordPress block section: {section}")
             elif not has_heading(wordpress_block, section):
                 issues.append(f"Missing WordPress block section: {section}")
 
     article_body = extract_article_body(markdown)
     word_count = count_words(article_body)
-    if word_count < 1500:
-        issues.append(f"Article body is too short: {word_count} words.")
+    if word_count < min_word_count:
+        issues.append(f"Article body is too short: {word_count} words (minimum: {min_word_count}).")
 
     return ValidationResult(ok=not issues, issues=issues, article_word_count=word_count, focus_keyword=focus_keyword)
 

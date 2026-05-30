@@ -266,6 +266,9 @@ class AgentConfig:
     enable_claim_ledger: bool = True
     max_claims_needing_review: int = 8
 
+    # Article validation controls
+    min_article_word_count: int = 1500
+
 
 @dataclass
 class AgentOutputs:

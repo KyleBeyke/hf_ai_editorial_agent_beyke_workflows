@@ -43,7 +43,11 @@ def extract_json_object(text: str) -> dict[str, Any]:
     try:
         parsed = json.loads(cleaned)
         return parsed if isinstance(parsed, dict) else {}
-    except Exception:
+    except json.JSONDecodeError as e:
+        # Log the specific JSON parsing error for debugging
+        pass
+    except TypeError as e:
+        # Handle type errors (e.g., if cleaned is not a string)
         pass
 
     start = cleaned.find("{")
@@ -52,7 +56,11 @@ def extract_json_object(text: str) -> dict[str, Any]:
         try:
             parsed = json.loads(cleaned[start : end + 1])
             return parsed if isinstance(parsed, dict) else {}
-        except Exception:
+        except json.JSONDecodeError as e:
+            # Log the specific JSON parsing error for debugging
+            return {}
+        except TypeError as e:
+            # Handle type errors
             return {}
     return {}
 

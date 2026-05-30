@@ -772,7 +772,7 @@ class EditorialAgent:
         """
 
         reviewer = EditorialPackageReviewer()
-        validation = validate_article_package(article_md)
+        validation = validate_article_package(article_md, min_word_count=self.config.min_article_word_count)
         review = reviewer.review(
             article_md,
             selected=selected,
@@ -889,7 +889,7 @@ class EditorialAgent:
             article_md = revision_generator.generate(SYSTEM_PROMPT, repair_prompt, max_tokens=self.config.max_revision_tokens)
             write_text(article_path, article_md)
 
-            validation = validate_article_package(article_md)
+            validation = validate_article_package(article_md, min_word_count=self.config.min_article_word_count)
             review = reviewer.review(
                 article_md,
                 selected=selected,
@@ -935,7 +935,7 @@ class EditorialAgent:
         # extra tokens.  This is for small repairs such as metadata, phrasing, and
         # structure, not for changing the thesis or adding unsupported claims.
         style_report = review_style(article_md)
-        validation = validate_article_package(article_md)
+        validation = validate_article_package(article_md, min_word_count=self.config.min_article_word_count)
         if self.config.enable_final_review and polish_needed(validation, style_report, model_review):
             polish_prompt_text = final_polish_prompt(article_md, model_review, validation, style_report)
             write_text(run_dir / "final_polish_prompt.md", polish_prompt_text)
@@ -951,7 +951,7 @@ class EditorialAgent:
             article_md = polished_md
             write_text(article_path, article_md)
 
-            validation = validate_article_package(article_md)
+            validation = validate_article_package(article_md, min_word_count=self.config.min_article_word_count)
             review = reviewer.review(
                 article_md,
                 selected=selected,

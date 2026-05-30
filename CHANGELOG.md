@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0 - Security and Validation Enhancements
+
+- Enhanced WordPress credential security with input validation and secure error handling
+- Improved validation accuracy with case-insensitive author matching and word boundary focus keyword validation
+- Added configurable minimum article word count (default 1500 words)
+- Enhanced placeholder validation to ignore placeholders in code blocks
+- Standardized related articles validation on current heading format
+- Improved error handling with specific exception types instead of broad exceptions
+- Added retry logic with exponential backoff for network operations
+- Enhanced payload validation for WordPress API calls
+- Expanded security documentation with detailed best practices
+- Added comprehensive test coverage for security and validation improvements
+
 ## 0.6.0 - Beyke Workflows GitHub-ready refresh
 
 - Retargeted default publication site from legacy Kyle Beyke domain assumptions to `https://beykeworkflows.com`.

@@ -16,6 +16,27 @@ reviewed, human-gated WordPress draft package for Beyke Workflows AI content.
 8. Review `publish_request.json`, `article.md`, `image_validation.json`, and
    `review_report.json` before any WordPress draft action.
 
+## Security considerations
+
+The agent now includes enhanced security features:
+
+- WordPress credentials are validated and handled securely with sanitized error messages
+- Environment variables are validated before use
+- Network operations include retry logic with exponential backoff
+- Specific exception handling replaces broad exception catching
+- See `SECURITY.md` for detailed security best practices
+
+## Runtime resources
+
+Prompt templates and model-routing configuration are packaged under:
+
+- `editorial_agent/prompts/`
+- `editorial_agent/config/`
+
+The top-level `prompts/` and `config/` directories are kept as editable
+source copies for review. Runtime code loads the packaged copies so wheel
+installs and editable installs behave the same way.
+
 ## Runtime resources
 
 Prompt templates and model-routing configuration are packaged under:

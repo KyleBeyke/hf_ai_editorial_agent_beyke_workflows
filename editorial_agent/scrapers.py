@@ -88,11 +88,19 @@ class SiteArchiveScraper:
 
         for page_num in range(1, max_pages + 1):
             url = self._page_url(category_url, page_num)
-            try:
-                html = self.http.get_text(url)
-            except Exception:
-                # Stop on the first missing page. Tests can assert partial behavior.
-                break
+            # Retry logic with exponential backoff
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    html = self.http.get_text(url)
+                    break  # Success, break out of retry loop
+                except Exception:
+                    if attempt == max_retries - 1:  # Last attempt
+                        # Stop on the first missing page. Tests can assert partial behavior.
+                        break
+                    else:
+                        # Exponential backoff
+                        time.sleep(2 ** attempt)
 
             parsed = self._parse_archive_page(html, base_url=category_url)
             for article in parsed:
@@ -189,10 +197,18 @@ class TopicScout:
         return deduped[:max_items]
 
     def _collect_feed(self, feed_url: str) -> list[SourceItem]:
-        try:
-            xml = self.http.get_text(feed_url)
-        except Exception:
-            return []
+        # Retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                xml = self.http.get_text(feed_url)
+                break  # Success, break out of retry loop
+            except Exception:
+                if attempt == max_retries - 1:  # Last attempt
+                    return []
+                else:
+                    # Exponential backoff
+                    time.sleep(2 ** attempt)
 
         # Use feedparser when available, with an stdlib fallback below.
         try:
@@ -332,7 +348,11 @@ def parse_datetime(value: str | None) -> datetime | None:
     # ISO first.
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
-    except Exception:
+    except ValueError:
+        # Handle invalid date format
+        pass
+    except TypeError:
+        # Handle invalid type
         pass
     # RFC 2822/RSS via email.utils.
     try:
@@ -342,7 +362,8 @@ def parse_datetime(value: str | None) -> datetime | None:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
-    except Exception:
+    except (ValueError, TypeError, OverflowError):
+        # Handle various parsing errors
         return None
 
 

@@ -344,7 +344,7 @@ def stage_review(args) -> int:
     site_path = run_dir / "site_articles.json"
     site_articles = [site_article_from_dict(x) for x in json.loads(site_path.read_text(encoding="utf-8"))] if site_path.exists() else []
 
-    validation = validate_article_package(article_md)
+    validation = validate_article_package(article_md, min_word_count=1500)
     review = EditorialPackageReviewer().review(article_md, selected=selected, evidence=evidence, site_articles=site_articles, validation=validation)
     claim_json, fact_md = write_claim_artifacts(article_md, evidence, run_dir)
     dup = compare_body_to_existing(article_md, site_articles, None, offline=True)
@@ -379,7 +379,7 @@ def stage_image(args) -> int:
         create_placeholder_featured_image(path, selected.title)
     else:
         HuggingFaceImageGenerator(model=args.image_model, provider=args.image_provider).generate_image(prompt, path)
-    validation = validate_featured_image(path, article_md, validate_article_package(article_md).focus_keyword)
+    validation = validate_featured_image(path, article_md, validate_article_package(article_md, min_word_count=1500).focus_keyword)
     write_json(run_dir / "image_validation.json", validation.to_dict())
     print(f"Featured image: {path}")
     return 0 if validation.ok else 1

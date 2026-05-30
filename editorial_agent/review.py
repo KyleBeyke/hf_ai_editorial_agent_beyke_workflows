@@ -213,7 +213,7 @@ def normalize_url(url: str) -> str:
         parsed = urlparse(url)
         path = parsed.path.rstrip("/")
         return urlunparse((parsed.scheme.lower(), parsed.netloc.lower().replace("www.", ""), path, "", "", ""))
-    except Exception:
+    except (ValueError, AttributeError):
         return url.lower().rstrip("/")
 
 

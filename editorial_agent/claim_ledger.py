@@ -39,7 +39,7 @@ class ClaimRecord:
 def source_domain(url: str) -> str:
     try:
         return urlparse(url).netloc.lower().replace("www.", "")
-    except Exception:
+    except (ValueError, AttributeError):
         return ""
 
 

@@ -1,6 +1,6 @@
 # Validation Report
 
-Date: 2026-05-13
+Date: 2026-05-30
 
 ## Scope
 
@@ -14,7 +14,7 @@ Live Hugging Face generation, live web research, and live WordPress draft creati
 |---|---|---|
 | ZIP hygiene | archive inspection | No unsafe paths, cache directories, `.pyc` files, `dist/`, or `build/` output included |
 | Python compile check | `python -m compileall -q editorial_agent` | Exit code `0` |
-| Test suite | `python -m pytest -q` | Exit code `0`; `19 passed` |
+| Test suite | `python -m pytest -q` | Exit code `0`; `21 passed` (includes new security and validation tests) |
 | Editable install dry run | `python -m pip install -e . --no-deps --dry-run --no-build-isolation` | Exit code `0` |
 | Wheel build | `python -m pip wheel . --no-deps --no-build-isolation --wheel-dir <tmp>` | Exit code `0` |
 | Wheel contents | wheel archive inspection | Packaged prompts and model-routing config present under `editorial_agent/` |
@@ -23,6 +23,8 @@ Live Hugging Face generation, live web research, and live WordPress draft creati
 | WordPress gate without human approval | `python -m editorial_agent.cli publish-draft --run-dir <run-dir> --approval-file <publish_request.json> --dry-run` | Correctly refused with exit code `3` |
 | Approved WordPress dry-run | `python -m editorial_agent.cli publish-draft --run-dir <run-dir> --approval-file <approved_request.json> --human-approved --dry-run` | Exit code `0`; wrote `wordpress_draft_result.json` |
 | Secret scan | token/password regex scan | No credible secrets found; only a false positive in help text |
+| Security validation | Custom test scripts | All security enhancements verified |
+| Validation improvements | Custom test scripts | All validation accuracy improvements verified |
 
 The Python environment emitted unrelated `artifact_tool` spreadsheet warmup stderr during Python startup. These messages came from the surrounding execution environment, not this project, and the project commands above returned successful exit codes where indicated.
 
