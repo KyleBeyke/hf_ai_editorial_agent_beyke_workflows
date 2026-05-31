@@ -215,6 +215,10 @@ def extract_article_body(markdown: str) -> str:
                 boundary = re.search(r"^##\s+Key Takeaways\s*$|^###\s+Key Takeaways\s*$", wordpress_block[start:], flags=re.MULTILINE)
                 end = start + boundary.start() if boundary else len(wordpress_block)
                 return wordpress_block[start:end].strip()
+    # Support simplified package fixtures that place Article Body as a top-level section.
+    top_level_article_body = extract_section(markdown, "Article Body")
+    if top_level_article_body:
+        return top_level_article_body
     # Legacy support for older offline fixtures.
     match = re.search(r"^###\s+Article Body\s*$", markdown, flags=re.MULTILINE)
     if not match:

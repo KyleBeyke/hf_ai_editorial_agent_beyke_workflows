@@ -96,7 +96,7 @@ Kyle Beyke
 AI
 
 ## Meta Description
-This article discusses MAIL and PAINTING, not AI.
+This article discusses MAIL and PAINTING only.
 
 ## Article Body
 This is a test article about MAIL and PAINTING.
