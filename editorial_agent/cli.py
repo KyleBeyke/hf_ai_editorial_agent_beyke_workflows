@@ -217,7 +217,11 @@ def stage_scout(args) -> Path:
     source_items = offline_source_items_for_cli() if args.offline else TopicScout(http).collect(args.lookback_days, args.max_candidates)
     candidates = CandidateSelector().build_candidates(source_items, site_articles)
 
-    memory = EditorialMemoryStore(Path(args.editorial_memory_dir) if args.editorial_memory_dir else Path(args.output_dir) / "_editorial_memory")
+    if args.offline and not args.editorial_memory_dir:
+        memory_root = run_dir / "_editorial_memory"
+    else:
+        memory_root = Path(args.editorial_memory_dir) if args.editorial_memory_dir else Path(args.output_dir) / "_editorial_memory"
+    memory = EditorialMemoryStore(memory_root)
     for cand in candidates:
         memory_risk, memory_reason = memory.prior_topic_risk(cand)
         if memory_risk >= 0.45:

@@ -146,7 +146,14 @@ class EditorialAgent:
 
         # Durable editorial memory lives outside the individual run directory so
         # future runs can avoid repeating generated or accepted article angles.
-        memory_root = self.config.editorial_memory_dir or (self.config.output_dir / "_editorial_memory")
+        #
+        # In offline mode, deterministic fixture topics can be exhausted quickly
+        # if memory persists across runs. Keep offline memory run-local by
+        # default unless the caller explicitly provides a memory directory.
+        if self.config.offline and self.config.editorial_memory_dir is None:
+            memory_root = run_dir / "_editorial_memory"
+        else:
+            memory_root = self.config.editorial_memory_dir or (self.config.output_dir / "_editorial_memory")
         editorial_memory = EditorialMemoryStore(memory_root)
 
         def emit(event_type: str, payload: dict | None = None):
