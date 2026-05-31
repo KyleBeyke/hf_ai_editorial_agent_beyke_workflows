@@ -82,10 +82,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = sub.add_parser("run", help="Run the full editorial agent once.")
     add_common_run_args(run)
-    run.add_argument("--text-model", default=os.getenv("HF_TEXT_MODEL", "openai/gpt-oss-120b"))
-    run.add_argument("--text-provider", default=os.getenv("HF_TEXT_PROVIDER", "cerebras"))
-    run.add_argument("--small-text-model", default=os.getenv("HF_SMALL_TEXT_MODEL", "Qwen/Qwen3.6-35B-A3B"))
-    run.add_argument("--small-text-provider", default=os.getenv("HF_SMALL_TEXT_PROVIDER", "deepinfra"))
+    run.add_argument("--text-model", default=os.getenv("HF_TEXT_MODEL", "openai/gpt-oss-120b:cheapest"))
+    run.add_argument("--text-provider", default=os.getenv("HF_TEXT_PROVIDER", "auto"))
+    run.add_argument("--small-text-model", default=os.getenv("HF_SMALL_TEXT_MODEL", "openai/gpt-oss-20b:cheapest"))
+    run.add_argument("--small-text-provider", default=os.getenv("HF_SMALL_TEXT_PROVIDER", "auto"))
     run.add_argument(
         "--model-routing-file",
         default=os.getenv("MODEL_ROUTING_FILE", str(default_routing_file())),
@@ -95,11 +95,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--route",
         action="append",
         default=[],
-        help="Override one route value, e.g. --route editorial_review.model=deepseek-ai/DeepSeek-V4-Pro.",
+        help="Override one route value, e.g. --route editorial_review.model=openai/gpt-oss-120b:cheapest.",
     )
     run.add_argument("--print-model-routing", action="store_true", help="Print resolved per-stage model routing before running.")
-    run.add_argument("--image-model", default=os.getenv("HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-Krea-dev"))
-    run.add_argument("--image-provider", default=os.getenv("HF_IMAGE_PROVIDER", "fal-ai"))
+    run.add_argument("--image-model", default=os.getenv("HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-Krea-dev:cheapest"))
+    run.add_argument("--image-provider", default=os.getenv("HF_IMAGE_PROVIDER", "auto"))
     run.add_argument("--no-image", action="store_true", help="Skip featured image generation.")
     run.add_argument("--strict", action="store_true", help="Do not fall back to offline placeholder/image on HF errors.")
     run.add_argument("--quality-mode", choices=["balanced"], default="balanced", help="Model-call strategy. balanced uses selector, synthesis, review, conditional revision/polish, and image.")
@@ -128,16 +128,16 @@ def build_parser() -> argparse.ArgumentParser:
     brief.add_argument("--research-json", required=True)
     brief.add_argument("--output-dir", default=None)
     brief.add_argument("--offline", action="store_true")
-    brief.add_argument("--text-model", default=os.getenv("HF_TEXT_MODEL", "openai/gpt-oss-120b"))
-    brief.add_argument("--text-provider", default=os.getenv("HF_TEXT_PROVIDER", "cerebras"))
+    brief.add_argument("--text-model", default=os.getenv("HF_TEXT_MODEL", "openai/gpt-oss-120b:cheapest"))
+    brief.add_argument("--text-provider", default=os.getenv("HF_TEXT_PROVIDER", "auto"))
 
     draft = sub.add_parser("draft", help="Generate only the article package from a topic brief and research artifacts.")
     draft.add_argument("--research-json", required=True)
     draft.add_argument("--topic-brief", required=True)
     draft.add_argument("--output-dir", default=None)
     draft.add_argument("--offline", action="store_true")
-    draft.add_argument("--text-model", default=os.getenv("HF_TEXT_MODEL", "openai/gpt-oss-120b"))
-    draft.add_argument("--text-provider", default=os.getenv("HF_TEXT_PROVIDER", "cerebras"))
+    draft.add_argument("--text-model", default=os.getenv("HF_TEXT_MODEL", "openai/gpt-oss-120b:cheapest"))
+    draft.add_argument("--text-provider", default=os.getenv("HF_TEXT_PROVIDER", "auto"))
 
     review = sub.add_parser("review", help="Review an existing run's article package and write review artifacts.")
     review.add_argument("--run-dir", required=True)
@@ -145,8 +145,8 @@ def build_parser() -> argparse.ArgumentParser:
     image = sub.add_parser("image", help="Generate or validate the featured image for an existing run.")
     image.add_argument("--run-dir", required=True)
     image.add_argument("--offline", action="store_true")
-    image.add_argument("--image-model", default=os.getenv("HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-Krea-dev"))
-    image.add_argument("--image-provider", default=os.getenv("HF_IMAGE_PROVIDER", "fal-ai"))
+    image.add_argument("--image-model", default=os.getenv("HF_IMAGE_MODEL", "black-forest-labs/FLUX.1-Krea-dev:cheapest"))
+    image.add_argument("--image-provider", default=os.getenv("HF_IMAGE_PROVIDER", "auto"))
 
     prep = sub.add_parser("prepare-publish", help="Create a human approval request for WordPress draft creation.")
     prep.add_argument("--run-dir", required=True)

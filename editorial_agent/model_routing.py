@@ -64,50 +64,50 @@ class ModelRoute:
 # changed without modifying the agent loop by editing editorial_agent/config/model_routing.yaml.
 DEFAULT_STAGE_ROUTES: dict[str, dict[str, Any]] = {
     "topic_angle_selection": {
-        "model": "Qwen/Qwen3.6-35B-A3B",
-        "provider": "deepinfra",
+        "model": "openai/gpt-oss-20b:cheapest",
+        "provider": "auto",
         "temperature": 0.2,
         "kind": "text",
     },
     "research_synthesis": {
-        "model": "deepseek-ai/DeepSeek-V4-Pro",
-        "provider": "together",
+        "model": "deepseek-ai/DeepSeek-V4-Flash:cheapest",
+        "provider": "auto",
         "temperature": 0.15,
         "kind": "text",
     },
     "topic_brief": {
-        "model": "openai/gpt-oss-120b",
-        "provider": "together",
+        "model": "openai/gpt-oss-120b:cheapest",
+        "provider": "auto",
         "temperature": 0.35,
         "kind": "text",
     },
     "article_generation": {
-        "model": "openai/gpt-oss-120b",
-        "provider": "together",
+        "model": "openai/gpt-oss-120b:cheapest",
+        "provider": "auto",
         "temperature": 0.55,
         "kind": "text",
     },
     "editorial_review": {
-        "model": "deepseek-ai/DeepSeek-V4-Pro",
-        "provider": "together",
+        "model": "deepseek-ai/DeepSeek-V4-Flash:cheapest",
+        "provider": "auto",
         "temperature": 0.1,
         "kind": "text",
     },
     "revision": {
-        "model": "openai/gpt-oss-120b",
-        "provider": "together",
+        "model": "openai/gpt-oss-120b:cheapest",
+        "provider": "auto",
         "temperature": 0.45,
         "kind": "text",
     },
     "final_polish": {
-        "model": "Qwen/Qwen3.6-35B-A3B",
-        "provider": "deepinfra",
+        "model": "openai/gpt-oss-20b:cheapest",
+        "provider": "auto",
         "temperature": 0.2,
         "kind": "text",
     },
     "featured_image": {
-        "model": "black-forest-labs/FLUX.1-Krea-dev",
-        "provider": "fal-ai",
+        "model": "black-forest-labs/FLUX.1-Krea-dev:cheapest",
+        "provider": "auto",
         "kind": "image",
     },
 }
@@ -139,8 +139,8 @@ def parse_route_overrides(overrides: list[str] | None) -> dict[str, dict[str, An
     """Parse `--route stage.key=value` CLI overrides.
 
     Examples:
-        --route editorial_review.model=deepseek-ai/DeepSeek-V4-Pro
-        --route editorial_review.provider=together
+        --route editorial_review.model=openai/gpt-oss-120b:cheapest
+        --route editorial_review.provider=auto
         --route article_generation.temperature=0.55
     """
 
@@ -161,12 +161,12 @@ def resolve_model_routes(
     *,
     routing_file: Path | None = None,
     use_file_defaults: bool = True,
-    heavy_model: str = "openai/gpt-oss-120b",
-    heavy_provider: str = "together",
-    small_model: str = "Qwen/Qwen3.6-35B-A3B",
-    small_provider: str = "deepinfra",
-    image_model: str = "black-forest-labs/FLUX.1-Krea-dev",
-    image_provider: str = "fal-ai",
+    heavy_model: str = "openai/gpt-oss-120b:cheapest",
+    heavy_provider: str = "auto",
+    small_model: str = "openai/gpt-oss-20b:cheapest",
+    small_provider: str = "auto",
+    image_model: str = "black-forest-labs/FLUX.1-Krea-dev:cheapest",
+    image_provider: str = "auto",
     cli_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, ModelRoute]:
     """Resolve final routes for all stages.

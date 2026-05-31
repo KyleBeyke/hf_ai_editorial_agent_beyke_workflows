@@ -189,14 +189,14 @@ class AgentConfig:
 
     # Current practical HF text default.  Hugging Face provider availability can
     # change, so every model/provider can be overridden at the CLI or by env vars.
-    hf_text_model: str = "openai/gpt-oss-120b"
-    hf_text_provider: str = "cerebras"
+    hf_text_model: str = "openai/gpt-oss-120b:cheapest"
+    hf_text_provider: str = "auto"
 
     # Image default prefers a high-quality professional image model.  The agent
     # can fall back to a deterministic local image so a run still produces a
     # WordPress-ready package when image inference fails.
-    hf_image_model: str = "black-forest-labs/FLUX.1-Krea-dev"
-    hf_image_provider: str = "fal-ai"
+    hf_image_model: str = "black-forest-labs/FLUX.1-Krea-dev:cheapest"
+    hf_image_provider: str = "auto"
 
     offline: bool = False
     allow_offline_fallback: bool = True
@@ -232,8 +232,8 @@ class AgentConfig:
     # Backward-compatible model lanes. These are still accepted by the CLI, but
     # the preferred configuration is now the per-stage `model_routes` mapping.
     # The lane values are used only when no routing file is provided.
-    hf_small_text_model: str = "Qwen/Qwen3.6-35B-A3B"
-    hf_small_text_provider: str = "deepinfra"
+    hf_small_text_model: str = "openai/gpt-oss-20b:cheapest"
+    hf_small_text_provider: str = "auto"
     use_model_routing: bool = True
 
     # Per-stage model routing. Keys are stages such as "research_synthesis" or

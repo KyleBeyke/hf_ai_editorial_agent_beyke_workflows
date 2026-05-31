@@ -38,10 +38,10 @@ def test_balanced_offline_run_writes_model_judgment_artifacts(tmp_path):
         "image_generation",
     ]
     routes = report["models"]["stage_routes"]
-    assert routes["topic_angle_selection"]["model"] == "Qwen/Qwen3.6-35B-A3B"
-    assert routes["research_synthesis"]["model"] == "deepseek-ai/DeepSeek-V4-Pro"
-    assert routes["article_generation"]["model"] == "openai/gpt-oss-120b"
-    assert routes["editorial_review"]["model"] == "deepseek-ai/DeepSeek-V4-Pro"
+    assert routes["topic_angle_selection"]["model"] == "openai/gpt-oss-20b:cheapest"
+    assert routes["research_synthesis"]["model"] == "deepseek-ai/DeepSeek-V4-Flash:cheapest"
+    assert routes["article_generation"]["model"] == "openai/gpt-oss-120b:cheapest"
+    assert routes["editorial_review"]["model"] == "deepseek-ai/DeepSeek-V4-Flash:cheapest"
 
     events = outputs.events_jsonl.read_text(encoding="utf-8")
     for expected in [
