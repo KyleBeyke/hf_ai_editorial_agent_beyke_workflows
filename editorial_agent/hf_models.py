@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 
 class TextGenerator(Protocol):
@@ -89,6 +89,7 @@ class HuggingFaceImageGenerator:
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         image.save(output_path)
+        apply_deterministic_featured_image_cleanup(output_path)
         return output_path
 
 
@@ -104,6 +105,59 @@ def normalize_image_model_id(model: str) -> str:
     if sep and base and suffix in {"cheapest", "fastest", "preferred"}:
         return base
     return model
+
+
+def apply_deterministic_featured_image_cleanup(image_path: Path) -> Path:
+    """Apply deterministic cleanup to reduce screen-text artifacts.
+
+    This pass is intentionally simple and stable:
+    - slight global sharpening/contrast for editorial crispness;
+    - mild localized blur in a monitor-height band where generative gibberish
+      text commonly appears;
+    - stronger side-cluster attenuation, keeping center composition sharper.
+
+    The same input image always produces the same output image.
+    """
+
+    img = Image.open(image_path).convert("RGB")
+    base = ImageEnhance.Sharpness(img).enhance(1.12)
+    base = ImageEnhance.Contrast(base).enhance(1.04)
+    blur = base.filter(ImageFilter.GaussianBlur(radius=3.0))
+
+    width, height = base.size
+    mask = Image.new("L", (width, height), 0)
+    pix = mask.load()
+
+    for y in range(height):
+        y0 = int(height * 0.417)
+        y1 = int(height * 0.475)
+        y2 = int(height * 0.703)
+        y3 = int(height * 0.742)
+        if y < y0 or y > y3:
+            v = 0
+        elif y0 <= y < y1:
+            v = int((y - y0) / max(1, (y1 - y0)) * 120)
+        elif y1 <= y <= y2:
+            v = 120
+        else:
+            v = int((y3 - y) / max(1, (y3 - y2)) * 120)
+        for x in range(width):
+            pix[x, y] = v
+
+    side_clusters = [
+        (int(width * 0.063), int(width * 0.338)),
+        (int(width * 0.610), int(width * 0.977)),
+    ]
+    y_start = int(height * 0.443)
+    y_end = int(height * 0.684)
+    for x0, x1 in side_clusters:
+        for x in range(max(0, x0), min(width, x1)):
+            for y in range(max(0, y_start), min(height, y_end)):
+                pix[x, y] = min(170, pix[x, y] + 30)
+
+    cleaned = Image.composite(blur, base, mask)
+    cleaned.save(image_path)
+    return image_path
 
 
 class OfflineEditorialGenerator:
