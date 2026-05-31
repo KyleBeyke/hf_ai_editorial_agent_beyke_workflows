@@ -41,6 +41,10 @@ REQUIRED_TOP_LEVEL_SECTIONS = [
     "Featured Image Description",
 ]
 
+PACKAGE_HEADING_ALIASES = REQUIRED_TOP_LEVEL_SECTIONS + [
+    "Notes on Constrained Sections",
+]
+
 REQUIRED_WORDPRESS_BLOCK_SECTIONS = [
     "Article Body",
     "Key Takeaways",
@@ -73,6 +77,7 @@ class ValidationResult:
 
 
 def validate_article_package(markdown: str, min_word_count: int = 1500) -> ValidationResult:
+    markdown = normalize_package_markdown(markdown)
     issues: list[str] = []
 
     for section in REQUIRED_TOP_LEVEL_SECTIONS:
@@ -137,16 +142,18 @@ def validate_article_package(markdown: str, min_word_count: int = 1500) -> Valid
 
 
 def has_heading(markdown: str, heading: str, level: int | None = None) -> bool:
+    markdown = normalize_package_markdown(markdown)
+    heading_pattern = heading_regex_fragment(heading)
     if level is None:
-        pattern = rf"^#{{2,4}}\s+{re.escape(heading)}\s*$"
+        pattern = rf"^#{{2,4}}\s+{heading_pattern}\s*$"
     else:
-        pattern = rf"^#{{{level}}}\s+{re.escape(heading)}\s*$"
+        pattern = rf"^#{{{level}}}\s+{heading_pattern}\s*$"
     return bool(re.search(pattern, markdown, flags=re.MULTILINE))
 
 
 def first_nonempty_line(text: str) -> str | None:
     for line in text.splitlines():
-        cleaned = line.strip().strip("` ")
+        cleaned = strip_inline_markdown(line.strip())
         if cleaned:
             return cleaned
     return None
@@ -160,7 +167,8 @@ def extract_section(markdown: str, heading: str) -> str:
     the block intentionally contains level-2 headings.
     """
 
-    pattern = rf"^##\s+{re.escape(heading)}\s*$"
+    markdown = normalize_package_markdown(markdown)
+    pattern = rf"^##\s+{heading_regex_fragment(heading)}\s*$"
     match = re.search(pattern, markdown, flags=re.MULTILINE)
     if not match:
         return ""
@@ -173,11 +181,16 @@ def extract_section(markdown: str, heading: str) -> str:
 def extract_consolidated_wordpress_block(markdown: str) -> str:
     """Extract the paste-ready WordPress block despite nested level-2 headings."""
 
+    markdown = normalize_package_markdown(markdown)
     match = re.search(r"^##\s+Consolidated WordPress Content Block\s*$", markdown, flags=re.MULTILINE)
     if not match:
         return ""
     start = match.end()
-    boundary_pattern = r"^##\s+(?:" + "|".join(re.escape(h) for h in PACKAGE_SECTIONS_AFTER_WORDPRESS_BLOCK) + r")\s*$"
+    boundary_pattern = (
+        r"^##\s+(?:"
+        + "|".join(heading_regex_fragment(h) for h in PACKAGE_SECTIONS_AFTER_WORDPRESS_BLOCK)
+        + r")\s*$"
+    )
     boundary = re.search(boundary_pattern, markdown[start:], flags=re.MULTILINE)
     end = start + boundary.start() if boundary else len(markdown)
     return markdown[start:end].strip()
@@ -186,6 +199,7 @@ def extract_consolidated_wordpress_block(markdown: str) -> str:
 def extract_markdown_heading_section(markdown: str, heading: str) -> str:
     """Extract a section from a markdown fragment by any level-2 to level-4 heading."""
 
+    markdown = normalize_package_markdown(markdown)
     pattern = rf"^(##{{1,3}})\s+{re.escape(heading)}\s*$"
     match = re.search(pattern, markdown, flags=re.MULTILINE)
     if not match:
@@ -206,6 +220,7 @@ def extract_article_body(markdown: str) -> str:
     arbitrary heading.
     """
 
+    markdown = normalize_package_markdown(markdown)
     wordpress_block = extract_consolidated_wordpress_block(markdown)
     if wordpress_block:
         for level in (2, 3):
@@ -231,3 +246,47 @@ def extract_article_body(markdown: str) -> str:
 
 def count_words(text: str) -> int:
     return len(re.findall(r"\b[\w'-]+\b", text))
+
+
+def normalize_package_markdown(markdown: str) -> str:
+    """Normalize common heading formatting drifts into canonical package headings.
+
+    Live models sometimes emit top-level metadata as bold labels like:
+        **Title**
+    instead of:
+        ## Title
+    This keeps downstream validation/parsing resilient while preserving content.
+    """
+
+    normalized = markdown.replace("\r\n", "\n")
+    for heading in PACKAGE_HEADING_ALIASES:
+        bold_heading = rf"^\s*\*\*\s*{re.escape(heading)}\s*\*\*\s*$"
+        normalized = re.sub(bold_heading, f"## {heading}", normalized, flags=re.MULTILINE)
+    # Normalize common heading variants emitted by models so deterministic
+    # section checks and WordPress extraction remain stable.
+    practical_framework_variants = [
+        (r"^##\s+Decision[-\u2010-\u2015\u2212 ]Making Framework\s*$", "## Practical Decision Framework"),
+        (r"^###\s+Decision[-\u2010-\u2015\u2212 ]Making Framework\s*$", "### Practical Decision Framework"),
+        (r"^##\s+Decision Framework\s*$", "## Practical Decision Framework"),
+        (r"^###\s+Decision Framework\s*$", "### Practical Decision Framework"),
+    ]
+    for pattern, replacement in practical_framework_variants:
+        normalized = re.sub(pattern, replacement, normalized, flags=re.MULTILINE)
+    return normalized
+
+
+def strip_inline_markdown(text: str) -> str:
+    """Strip lightweight inline Markdown formatting around a metadata value."""
+
+    cleaned = text.strip().strip("` ").strip()
+    cleaned = re.sub(r"^\*{1,2}(.*?)\*{1,2}$", r"\1", cleaned)
+    cleaned = re.sub(r"^_{1,2}(.*?)_{1,2}$", r"\1", cleaned)
+    cleaned = re.sub(r"\[(.*?)\]\([^)]*\)", r"\1", cleaned)
+    return cleaned.strip()
+
+
+def heading_regex_fragment(heading: str) -> str:
+    """Return a heading regex that tolerates common unicode dash variants."""
+
+    escaped = re.escape(heading)
+    return escaped.replace(r"\-", r"[-\u2010-\u2015\u2212]")

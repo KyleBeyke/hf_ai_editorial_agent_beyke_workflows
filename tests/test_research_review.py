@@ -1,4 +1,4 @@
-from editorial_agent.research import ResearchAgent
+from editorial_agent.research import ResearchAgent, fetch_source_excerpt
 from editorial_agent.review import EditorialPackageReviewer
 from editorial_agent.schemas import AgentConfig, CandidateTopic, ResearchEvidence, SiteArticle, SourceItem, utc_now_iso
 from editorial_agent.validation import validate_article_package
@@ -78,3 +78,13 @@ def test_editorial_reviewer_flags_unverified_source():
 
     assert review.revision_required
     assert any("Unverified external source" in issue for issue in review.truthfulness_issues)
+
+
+def test_fetch_source_excerpt_retry_path_returns_fallback_without_crashing(monkeypatch):
+    class AlwaysFailHttp:
+        def get_text(self, url):
+            raise RuntimeError("network error")
+
+    monkeypatch.setattr("editorial_agent.research.time.sleep", lambda _seconds: None)
+    excerpt = fetch_source_excerpt(AlwaysFailHttp(), "https://example.com/fails", fallback="fallback text")
+    assert excerpt == "fallback text"

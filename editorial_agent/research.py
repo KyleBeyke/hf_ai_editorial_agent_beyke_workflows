@@ -18,6 +18,7 @@ relevance, recency, and excerpt volume before the writer model is called.
 from __future__ import annotations
 
 import re
+import time
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timezone

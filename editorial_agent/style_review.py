@@ -44,7 +44,10 @@ def review_style(markdown: str) -> StyleReviewReport:
     hits = {phrase: lower.count(phrase) for phrase in GENERIC_AI_PHRASES if phrase in lower}
     issues = [f"Generic AI/corporate phrase appears {count}x: {phrase}" for phrase, count in hits.items()]
 
-    if len(re.findall(r"\bAI\b", markdown)) > 70:
+    ai_mentions = len(re.findall(r"\bAI\b", markdown))
+    total_words = max(1, len(re.findall(r"\b[\w'-]+\b", markdown)))
+    ai_density = ai_mentions / total_words
+    if ai_mentions > 70 and ai_density > 0.035:
         issues.append("The article may overuse 'AI' mechanically; check for keyword stuffing.")
 
     return StyleReviewReport(ok=not issues, issues=issues, phrase_hits=hits)

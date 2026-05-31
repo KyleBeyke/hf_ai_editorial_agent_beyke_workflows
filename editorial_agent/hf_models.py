@@ -77,7 +77,7 @@ class HuggingFaceImageGenerator:
         client = InferenceClient(provider=self.provider, api_key=token)
         image = client.text_to_image(
             prompt,
-            model=self.model,
+            model=normalize_image_model_id(self.model),
             width=1344,
             height=768,
             num_inference_steps=28,
@@ -90,6 +90,20 @@ class HuggingFaceImageGenerator:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         image.save(output_path)
         return output_path
+
+
+def normalize_image_model_id(model: str) -> str:
+    """Return a Hub repo id usable by text-to-image endpoints.
+
+    Hugging Face provider-routing suffixes (for example `:cheapest`) are valid
+    for chat-style routes but are not accepted by image repo-id validation in
+    `text_to_image`. Strip only known policy suffixes and keep the base model.
+    """
+
+    base, sep, suffix = model.rpartition(":")
+    if sep and base and suffix in {"cheapest", "fastest", "preferred"}:
+        return base
+    return model
 
 
 class OfflineEditorialGenerator:
